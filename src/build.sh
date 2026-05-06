@@ -7,6 +7,15 @@ RAWSVG_DIR="$SRC_DIR/svg"
 INDEX="$SRC_DIR/index.theme"
 ALIASES="$SRC_DIR/alias.list"
 
+# Inkscape/fontconfig need writable user dirs; Nix sandboxes often point HOME at /homeless-shelter.
+BUILD_PROFILE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/breeze-catppuccin.XXXXXX")"
+trap 'rm -rf "$BUILD_PROFILE_DIR"' EXIT
+export HOME="$BUILD_PROFILE_DIR/home"
+export XDG_CACHE_HOME="$BUILD_PROFILE_DIR/cache"
+export XDG_CONFIG_HOME="$BUILD_PROFILE_DIR/config"
+export XDG_DATA_HOME="$BUILD_PROFILE_DIR/data"
+mkdir -p "$HOME" "$XDG_CACHE_HOME/fontconfig" "$XDG_CONFIG_HOME/inkscape" "$XDG_DATA_HOME"
+
 NOMINAL_SIZE=24
 REAL_SIZE=32
 FRAME_TIME=30

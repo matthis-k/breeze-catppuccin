@@ -29,19 +29,25 @@
       accentNames = builtins.attrNames accents;
       outlineColor = "#1e1e2e";
       version = self.shortRev or self.dirtyShortRev or "dev";
-      source = lib.fileset.toSource {
+      buildSource = lib.fileset.toSource {
         root = ./.;
         fileset = lib.fileset.unions [
           ./src
           ./Breeze-Catppuccin/src
         ];
       };
+      prebuiltSource = lib.fileset.toSource {
+        root = ./.;
+        fileset = lib.fileset.unions [
+          ./prebuilt
+        ];
+      };
       forEachSystem = f: lib.genAttrs systems (system: f (import nixpkgs { inherit system; }));
-      mkBuild = pkgs:
+      mkBuildFromSource = pkgs:
         pkgs.stdenvNoCC.mkDerivation {
           pname = "catppuccin-breeze-build";
           inherit version;
-          src = source;
+          src = buildSource;
 
           nativeBuildInputs = with pkgs; [
             inkscape
@@ -109,6 +115,20 @@ ${lib.concatStringsSep "\n" (map (accent: "                ${accent}) color='${a
             platforms = systems;
           };
         };
+      mkPrebuiltBundle = pkgs:
+        pkgs.runCommand "catppuccin-breeze-prebuilt-${version}"
+          {
+            meta = {
+              description = "Checked-in Breeze cursor themes for all Catppuccin accents";
+              homepage = "https://github.com/matthis-k/breeze-catppuccin";
+              license = lib.licenses.gpl2Only;
+              platforms = systems;
+            };
+          }
+          ''
+            mkdir -p "$out/share/icons"
+            cp -a "${prebuiltSource}/prebuilt/." "$out/share/icons/"
+          '';
       mkTheme = pkgs: build: accent:
         pkgs.runCommand "catppuccin-breeze-${accent}-${version}"
           {
@@ -127,12 +147,13 @@ ${lib.concatStringsSep "\n" (map (accent: "                ${accent}) color='${a
     {
       packages = forEachSystem (pkgs:
         let
-          build = mkBuild pkgs;
+          build = mkPrebuiltBundle pkgs;
+          buildFromSource = mkBuildFromSource pkgs;
           themes = lib.genAttrs accentNames (accent: mkTheme pkgs build accent);
         in
         themes
         // {
-          inherit build;
+          inherit build buildFromSource;
           default = themes.blue;
           catppuccin-breeze = themes;
         });
